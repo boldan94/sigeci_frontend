@@ -17,7 +17,7 @@ export const register = (credentials) =>
         body: credentials
     });
 
-export const getCurrentUser = () => request("/api/auth/me/");
+export const getCurrentUser = () => request("/auth/me/");
 
 export const logout = () => {
     localStorage.removeItem("access");

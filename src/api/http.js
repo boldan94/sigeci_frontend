@@ -1,6 +1,6 @@
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
-const ACCESS_TOKEN_KEY = "access";
-const REFRESH_TOKEN_KEY = "refresh";
+const ACCESS_TOKEN_KEY = "token";
+const REFRESH_TOKEN_KEY = "refreshToken";
 
 export class ApiError extends Error {
     constructor(status, message) {
@@ -65,17 +65,20 @@ export const request = async (path, options = {}) => {
         payload = null;
     }
 
-    if (response.status === 401 && !skipAuthRefresh && path !== "/api/auth/refresh/") {
+    if (response.status === 401 && !skipAuthRefresh && !path.includes("/auth/refresh")) {
         const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
         if (refreshToken) {
             try {
-                const refreshResponse = await request("/api/auth/refresh/", {
+                const refreshResponse = await request("/auth/refresh/", {
                     method: "POST",
-                    body: { refresh: refreshToken },
+                    body: { refresh_token: refreshToken },
                     skipAuthRefresh: true
                 });
-                localStorage.setItem(ACCESS_TOKEN_KEY, refreshResponse.access);
-                return request(path, { ...fetchOptions, skipAuthRefresh: true });
+                const newToken = refreshResponse.data?.token || refreshResponse.token;
+                if (newToken) {
+                    localStorage.setItem(ACCESS_TOKEN_KEY, newToken);
+                    return request(path, { ...fetchOptions, skipAuthRefresh: true });
+                }
             } catch {
                 localStorage.removeItem(ACCESS_TOKEN_KEY);
                 localStorage.removeItem(REFRESH_TOKEN_KEY);

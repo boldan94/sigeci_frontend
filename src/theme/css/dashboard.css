@@ -1,22 +1,22 @@
 body{
-    background: red;
+    background: var(--bs-secondary-bg-rgb);
 }
 
 .header-desarrollo{
-    background: green;
+    background: var(--bs-secondary-bg-rgb);
     height: 50px;
 }
 .container-desarrollo{
-    background: black;
+    background: var(--bs-secondary-bg-rgb);
     display: flex;
     height: calc(100vh - 100px);
 }
 .nav-desarrollo{
-    background: blue;
+    background: var(--bs-secondary-bg-rgb);
     width: 20%;
 }
 .body-desarrollo{
-    background: yellow;
+    background: var(--bs-secondary-bg-rgb);
     width: 80%;
 }
 .footer-desarrollo{

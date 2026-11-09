@@ -15,6 +15,7 @@
   "dependencies": {
     "@popperjs/core": "^2.11.8",
     "admin-lte": "^4.10.0",
+    "axios": "^1.21.0",
     "bootstrap": "^5.3.8",
     "i18next": "^26.4.4",
     "lucide-react": "^1.48.0",

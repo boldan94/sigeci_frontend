@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import DataTable from "react-data-table-component";
 import Card from "../../components/cards/Card";
@@ -7,26 +7,39 @@ import Modal from "../../components/modals/Modal";
 import ButtonPrimary from "../../components/buttons/ButtonPrimary";
 import ButtonSecondary from "../../components/buttons/ButtonSecondary";
 import ButtonLink from "../../components/buttons/ButtonLink";
-import { MOCK_ARTICLES } from "./mockArticles";
+import { useFetch } from "../../hooks/useFetch";
+import HandlerApp from "../../utils/HandlerApp";
 
 const ArticleScreen = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const api = useFetch();
+    const handlerApp = HandlerApp();
 
-    const [articles, setArticles] = useState(() => {
-        const stored = localStorage.getItem("sigeci_articles");
-        if (stored) {
-            try {
-                return JSON.parse(stored);
-            } catch (e) {
-                console.error("Error parsing stored articles", e);
-            }
-        }
-        return MOCK_ARTICLES;
-    });
+    const [articles, setArticles] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("TODOS");
+
+    const loadArticles = async () => {
+        setLoading(true);
+        handlerApp.setLoader(true);
+        try {
+            const res = await api.get("article");
+            if (res.data) setArticles(res.data);
+        } catch {
+            setArticles([]);
+            triggerAlert("danger", "No pudimos cargar los artículos desde el servidor.", "Error");
+        } finally {
+            setLoading(false);
+            handlerApp.setLoader(false);
+        }
+    };
+
+    useEffect(() => {
+        loadArticles();
+    }, []);
 
     // Modal de confirmación para eliminar
     const [selectedArticle, setSelectedArticle] = useState(null);
@@ -56,112 +69,103 @@ const ArticleScreen = () => {
         setDeleteModalOpen(true);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         if (!selectedArticle) return;
-        const updated = articles.filter(a => a.id !== selectedArticle.id);
-        setArticles(updated);
-        localStorage.setItem("sigeci_articles", JSON.stringify(updated));
-        setDeleteModalOpen(false);
-
-        triggerAlert(
-            "danger",
-            `El artículo "${selectedArticle.title}" (ID: #${selectedArticle.id}) ha sido eliminado del repositorio con éxito.`,
-            "¡Artículo Eliminado!"
-        );
-        setSelectedArticle(null);
+        handlerApp.setLoader(true);
+        try {
+            await api.deleteMethod(`article/${selectedArticle.article_id}/delete`);
+            setArticles(prev => prev.filter(a => a.article_id !== selectedArticle.article_id));
+            setDeleteModalOpen(false);
+            triggerAlert(
+                "danger",
+                `El artículo "${selectedArticle.article_subject}" (ID: #${selectedArticle.article_id}) ha sido eliminado con éxito.`,
+                "¡Artículo Eliminado!"
+            );
+        } catch (error) {
+            console.error("Error al eliminar artículo:", error);
+            triggerAlert("danger", "No fue posible eliminar el artículo.", "Error");
+        } finally {
+            handlerApp.setLoader(false);
+            setSelectedArticle(null);
+        }
     };
 
     const filteredArticles = useMemo(() => {
         return articles.filter(article => {
+            const subject = article.article_subject || "";
+            const desc = article.article_description || "";
             const matchesSearch =
-                article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                article.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                article.category.toLowerCase().includes(searchTerm.toLowerCase());
+                subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                desc.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus =
-                statusFilter === "TODOS" || article.status === statusFilter;
+                statusFilter === "TODOS" ||
+                (statusFilter === "ACTIVO" && article.article_active) ||
+                (statusFilter === "INACTIVO" && !article.article_active);
             return matchesSearch && matchesStatus;
         });
     }, [articles, searchTerm, statusFilter]);
 
-    const getStatusBadge = (status) => {
-        switch (status) {
-            case "Publicado":
-                return <Badge type="Success" text="Publicado" pill />;
-            case "En Revisión":
-                return <Badge type="Warning" text="En Revisión" pill />;
-            case "Borrador":
-                return <Badge type="Secondary" text="Borrador" pill />;
-            default:
-                return <Badge type="Info" text={status} pill />;
-        }
-    };
-
     const columns = [
         {
             name: "ID",
-            selector: row => row.id,
+            selector: row => row.article_id,
             sortable: true,
-            width: "70px",
+            width: "80px",
             center: true,
-            cell: row => <span className="badge bg-light text-secondary border">#{row.id}</span>
+            cell: row => <span className="badge bg-light text-secondary border">#{row.article_id}</span>
         },
         {
             name: "Título del Artículo",
-            selector: row => row.title,
+            selector: row => row.article_subject,
             sortable: true,
             cell: row => (
                 <div className="py-2 text-truncate" style={{ maxWidth: "100%" }}>
                     <span
                         className="fw-semibold text-primary d-block mb-1 text-truncate"
                         style={{ cursor: "pointer" }}
-                        onClick={() => navigate(`/article/${row.id}`)}
-                        title={row.title}
+                        onClick={() => navigate(`/article/${row.article_id}`)}
+                        title={row.article_subject}
                     >
-                        {row.title}
+                        {row.article_subject}
                     </span>
-                    <small className="text-muted d-block text-truncate" title={row.summary}>
-                        {row.summary}
+                    <small className="text-muted d-block text-truncate" title={row.article_description}>
+                        {row.article_description}
                     </small>
                 </div>
             )
         },
         {
-            name: "Autor / Investigador",
-            selector: row => row.author,
+            name: "Tópico ID",
+            selector: row => row.topic_id,
             sortable: true,
-            maxWidth: "300px",
-            cell: row => (
-                <span className="small text-dark">
-                    <i className="bi bi-person me-1 text-secondary"></i>
-                    {row.author}
-                </span>
-            )
-        },
-        {
-            name: "Categoría",
-            selector: row => row.category,
-            sortable: true,
-            width: "140px",
+            width: "120px",
+            center: true,
             cell: row => (
                 <span className="badge bg-light text-dark border">
-                    {row.category}
+                    ID #{row.topic_id}
                 </span>
             )
         },
         {
             name: "Fecha",
-            selector: row => row.publishedAt,
+            selector: row => row.article_date,
             sortable: true,
-            width: "120px",
-            cell: row => <span className="small text-muted">{row.publishedAt}</span>
+            width: "140px",
+            cell: row => <span className="small text-muted">{row.article_date || "—"}</span>
         },
         {
             name: "Estado",
-            selector: row => row.status,
+            selector: row => row.article_active,
             sortable: true,
+            width: "120px",
             center: true,
-            width: "130px",
-            cell: row => getStatusBadge(row.status)
+            cell: row => (
+                <Badge
+                    type={row.article_active ? "Success" : "Secondary"}
+                    text={row.article_active ? "Activo" : "Inactivo"}
+                    pill
+                />
+            )
         },
         {
             name: "Acciones",
@@ -174,12 +178,12 @@ const ArticleScreen = () => {
                     <ButtonSecondary
                         label="Ver"
                         className="btn-sm py-1 px-2 text-nowrap"
-                        onClick={() => navigate(`/article/${row.id}`)}
+                        onClick={() => navigate(`/article/${row.article_id}`)}
                     />
                     <ButtonPrimary
                         label="Editar"
                         className="btn-sm py-1 px-2 text-nowrap"
-                        onClick={() => navigate(`/article/edit/${row.id}`)}
+                        onClick={() => navigate(`/article/edit/${row.article_id}`)}
                     />
                     <ButtonLink
                         label="Eliminar"
