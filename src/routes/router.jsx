@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router";
-import LoginScreen from "../pages/login/LoginScreen";
+// import LoginScreen from "../pages/login/LoginScreen";
+import LoginScreen from "../pages/auth/LoginScreen";
 import ForgotPasswordScreen from "../pages/auth/ForgotPasswordScreen";
 import ResetPinScreen from "../pages/auth/ResetPinScreen";
 import RegisterScreen from "../pages/auth/RegisterScreen";

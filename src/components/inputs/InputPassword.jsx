@@ -14,7 +14,7 @@ const InputPassword = ({
     const [showPassword, setShowPassword] = useState(false);
 
     // Contraseña segura: al menos 8 caracteres, al menos 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial
-    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._\-#^()+=])[A-Za-z\d@$!%*?&._\-#^()+=]{8,}$/;
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._<>\-#^()+=])[A-Za-z\d@$!%*?&._<>\-#^()+=]{8,}$/;
 
     return (
         <Controller
